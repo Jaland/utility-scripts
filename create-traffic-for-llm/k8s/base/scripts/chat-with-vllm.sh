@@ -10,44 +10,88 @@ MODEL_NAME="${MODEL_NAME:-granite-40}"
 # The chat prompt you want to send
 PROMPT_TEXT="${PROMPT_TEXT:-What is the capital of France?}"
 
+# Number of times to run the request (default: 1)
+NUM_REQUESTS="${NUM_REQUESTS:-1}"
+
+# Sleep time between requests in seconds (default: 1)
+SLEEP_BETWEEN_REQUESTS="${SLEEP_BETWEEN_REQUESTS:-1}"
+
 # Other parameters with defaults
 MAX_TOKENS="${MAX_TOKENS:-100}"
 TEMPERATURE="${TEMPERATURE:-0.7}"
 
-# Construct the JSON payload for the chat completion request
-# The 'messages' array follows the OpenAI chat format: [{"role": "user", "content": "..."}]
-# 'max_tokens' and 'temperature' are common parameters you might want to adjust.
-JSON_PAYLOAD=$(cat <<EOF
+# Function to make a single request
+make_request() {
+    local request_num=$1
+    echo "=== Request #${request_num} ==="
+    echo "Sending request to vLLM instance..."
+    echo "URL: ${VLLM_URL}/v1/chat/completions"
+    echo "Model: ${MODEL_NAME}"
+    echo "Prompt: \"${PROMPT_TEXT}\""
+    echo ""
+
+    # Construct the JSON payload
+    local json_payload
+    json_payload=$(cat <<EOF
 {
   "model": "${MODEL_NAME}",
   "messages": [
     {"role": "user", "content": "${PROMPT_TEXT}"}
   ],
-  "max_tokens": 100,
-  "temperature": 0.7,
+  "max_tokens": ${MAX_TOKENS},
+  "temperature": ${TEMPERATURE},
   "stream": false
 }
 EOF
-)
+    )
 
-echo "Sending request to vLLM instance..."
-echo "URL: ${VLLM_URL}/v1/chat/completions"
-echo "Model: ${MODEL_NAME}"
-echo "Prompt: \"${PROMPT_TEXT}\""
+    # Make the request and format the output
+    local response
+    response=$(curl -sS \
+      -X POST \
+      -H "Content-Type: application/json" \
+      -d "${json_payload}" \
+      "${VLLM_URL}/v1/chat/completions")
+    
+    # Extract and display the response in a readable format
+    local model_id
+    local content
+    local usage
+    
+    model_id=$(echo "$response" | jq -r '.id // "N/A"')
+    content=$(echo "$response" | jq -r '.choices[0].message.content // "No content"' | sed 's/\n/ /g')
+    usage=$(echo "$response" | jq -r '
+      "Tokens: " + (.usage.prompt_tokens|tostring) + 
+      " (prompt), " + 
+      (.usage.completion_tokens|tostring) + 
+      " (completion)"'
+    )
+    
+    echo "=== Response ==="
+    echo "ID: ${model_id}"
+    echo "---"
+    echo "${content}"
+    echo "---"
+    echo "${usage}"
+    echo ""
+    echo ""
+}
+
+# Main execution
+echo "Starting ${NUM_REQUESTS} request(s) to ${VLLM_URL}"
+echo "Sleeping ${SLEEP_BETWEEN_REQUESTS} second(s) between requests"
+echo "========================================"
 echo ""
 
-# Execute the curl command
-# -X POST: Specifies a POST request
-# -H "Content-Type: application/json": Sets the header to indicate JSON content
-# -d "${JSON_PAYLOAD}": Sends the JSON payload as the request body
-# -s: Silent mode, hides progress meter
-# -S: Show errors if curl fails
-curl -sS \
-  -X POST \
-  -H "Content-Type: application/json" \
-  -d "${JSON_PAYLOAD}" \
-  "${VLLM_URL}/v1/chat/completions"
+for ((i=1; i<=NUM_REQUESTS; i++)); do
+    make_request "$i"
+    
+    # Add delay between requests if not the last request
+    if [[ "$i" -lt "$NUM_REQUESTS" && "$SLEEP_BETWEEN_REQUESTS" -gt 0 ]]; then
+        echo "Waiting ${SLEEP_BETWEEN_REQUESTS} second(s) before next request..."
+        sleep "$SLEEP_BETWEEN_REQUESTS"
+    fi
+done
 
-echo ""
-echo "Request complete."
-
+echo "========================================"
+echo "Completed ${NUM_REQUESTS} request(s)"

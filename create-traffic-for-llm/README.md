@@ -77,10 +77,24 @@ kubectl create job --from=cronjob/chat-job chat-job-manual-$(date +%s)
 
 ### Viewing Logs
 
-To view logs of the most recent job run:
+To view logs, first find the pod name:
 
 ```bash
-kubectl logs -l job-name=chat-job-$(kubectl get job -o jsonpath='{.items[?(@.metadata.ownerReferences[0].kind=="CronJob")].metadata.name}' --sort-by=.metadata.creationTimestamp | tail -n1)
+# Get the most recent job pod
+POD_NAME=$(kubectl get pods --sort-by=.metadata.creationTimestamp -l job-name -o name | grep -v "-manual" | tail -n1)
+
+# View logs
+kubectl logs $POD_NAME
+```
+
+Or for a manual job:
+
+```bash
+# Get the most recent manual job pod
+POD_NAME=$(kubectl get pods --sort-by=.metadata.creationTimestamp -l job-name -o name | grep "-manual" | tail -n1)
+
+# View logs
+kubectl logs $POD_NAME
 ```
 
 ## Cleanup

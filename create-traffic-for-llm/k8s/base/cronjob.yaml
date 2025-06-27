@@ -2,8 +2,10 @@ apiVersion: batch/v1
 kind: CronJob
 metadata:
   name: chat-job
+  labels:
+    job-name: chat-job
 spec:
-  schedule: "*/5 * * * *"  # Default: run every 5 minutes
+  schedule: "* 1 * * *"  # Default: run every 1 hour
   successfulJobsHistoryLimit: 3
   failedJobsHistoryLimit: 3
   jobTemplate:
@@ -13,8 +15,8 @@ spec:
         spec:
           containers:
           - name: chat-client
-            image: curlimages/curl:latest
-            command: ["/bin/bash", "/script/chat-script.sh"]
+            image: registry.redhat.io/openshift4/ose-tools-rhel8:latest
+            command: ["/bin/sh", "/script/chat-script.sh"]
             env:
             - name: VLLM_URL
               value: "https://granite-40-model-as-a-service.apps.rhsaia.vg6c.p1.openshiftapps.com"
@@ -22,6 +24,10 @@ spec:
               value: "granite-40"
             - name: PROMPT_TEXT
               value: "What is the capital of France?"
+            - name: NUM_REQUESTS
+              value: "50"
+            - name: SLEEP_BETWEEN_REQUESTS
+              value: "3"
             - name: MAX_TOKENS
               value: "100"
             - name: TEMPERATURE
