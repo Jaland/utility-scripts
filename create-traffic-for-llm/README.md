@@ -20,21 +20,23 @@ A utility for generating traffic to vLLM instances, designed to be deployed as a
 
 ```text
 create-traffic-for-llm/
-├── chat-with-vllm.sh      # Main script for sending requests to vLLM
-└── k8s/                   # Kubernetes deployment files
-    ├── base/              # Base kustomization
-    │   ├── cronjob.yaml   # Base CronJob definition
-    │   └── kustomization.yaml
-    └── overlays/
-        └── dev/           # Development environment overrides
-            ├── kustomization.yaml
-            └── patch-cronjob.yaml
+├── k8s/                   # Kubernetes deployment files
+│   ├── base/              # Base kustomization
+│   │   ├── cronjob.yaml   # Base CronJob definition
+│   │   ├── kustomization.yaml
+│   │   └── scripts/       # Scripts directory
+│   │       └── chat-with-vllm.sh  # Main script for vLLM requests
+│   └── overlays/
+│       └── dev/           # Development environment overrides
+│           ├── kustomization.yaml
+│           └── patch-cronjob.yaml
+└── chat-with-vllm.sh      # Legacy script location (symlinked to k8s/scripts/)
 ```
-
 
 ## Quick Start
 
 1. Navigate to the k8s directory:
+
    ```bash
    cd create-traffic-for-llm/k8s
    ```
@@ -47,6 +49,7 @@ create-traffic-for-llm/
    - `TEMPERATURE`: Sampling temperature (default: 0.7)
 
 3. Apply the configuration:
+
    ```bash
    kubectl apply -k overlays/dev
    ```
@@ -62,7 +65,6 @@ spec:
   schedule: "*/15 * * * *"  # Run every 15 minutes
 ```
 
-
 ### Running a One-time Job
 
 To run the job immediately without waiting for the schedule:
@@ -70,7 +72,6 @@ To run the job immediately without waiting for the schedule:
 ```bash
 kubectl create job --from=cronjob/chat-job chat-job-manual-$(date +%s)
 ```
-
 
 ## Monitoring
 
