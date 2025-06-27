@@ -19,9 +19,9 @@ spec:
             command: ["/bin/sh", "/script/chat-script.sh"]
             env:
             - name: VLLM_URL
-              value: "https://granite-40-model-as-a-service.apps.rhsaia.vg6c.p1.openshiftapps.com"
+              value: "http://granite-33-2b-instruct-predictor.model-as-a-service.svc.cluster.local"
             - name: MODEL_NAME
-              value: "granite-40"
+              value: "granite-33-2b-instruct"
             - name: PROMPT_TEXT
               value: "What is the capital of France?"
             - name: NUM_REQUESTS

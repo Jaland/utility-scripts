@@ -58,23 +58,32 @@ EOF
     local content
     local usage
     
-    model_id=$(echo "$response" | jq -r '.id // "N/A"')
-    content=$(echo "$response" | jq -r '.choices[0].message.content // "No content"' | sed 's/\n/ /g')
-    usage=$(echo "$response" | jq -r '
-      "Tokens: " + (.usage.prompt_tokens|tostring) + 
-      " (prompt), " + 
-      (.usage.completion_tokens|tostring) + 
-      " (completion)"'
-    )
+    # Check if content is null in the response
+    if [[ $(echo "$response" | jq '.choices[0].message.content == null') == "true" ]]; then
+        echo "=== Full Response (content is null) ==="
+        echo "$response" | jq .
+        echo ""
+        return 0
+    else    
+      model_id=$(echo "$response" | jq -r '.id // "N/A"')
+      content=$(echo "$response" | jq -r '.choices[0].message.content // "No content"' | sed 's/\n/ /g')
+      usage=$(echo "$response" | jq -r '
+        "Tokens: " + (.usage.prompt_tokens|tostring) + 
+        " (prompt), " + 
+        (.usage.completion_tokens|tostring) + 
+        " (completion)"'
+      )
     
-    echo "=== Response ==="
-    echo "ID: ${model_id}"
-    echo "---"
-    echo "${content}"
-    echo "---"
-    echo "${usage}"
-    echo ""
-    echo ""
+      echo "=== Response ==="
+      echo "ID: ${model_id}"
+      echo "---"
+      echo "${content}"
+      echo "---"
+      echo "${usage}"
+      echo ""
+      echo ""
+      
+    fi
 }
 
 # Main execution
