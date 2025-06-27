@@ -1,0 +1,28 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: chat-job
+spec:
+  # Uncomment and set your desired schedule
+  # schedule: "*/30 * * * *"  # Run every 30 minutes
+  # suspend: false  # Set to true to suspend the cron job
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: chat-client
+            env:
+            # Required - set your vLLM instance URL
+            - name: VLLM_URL
+              value: "https://granite-40-model-as-a-service.apps.rhsaia.vg6c.p1.openshiftapps.com"
+            
+            # Optional - override these as needed
+            - name: MODEL_NAME
+              value: "granite-40"
+            - name: PROMPT_TEXT
+              value: "What is the capital of France?"
+            - name: MAX_TOKENS
+              value: "100"
+            - name: TEMPERATURE
+              value: "0.7"

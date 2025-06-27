@@ -1,0 +1,37 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: chat-job
+spec:
+  schedule: "*/5 * * * *"  # Default: run every 5 minutes
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        spec:
+          containers:
+          - name: chat-client
+            image: curlimages/curl:latest
+            command: ["/bin/bash", "/script/chat-script.sh"]
+            env:
+            - name: VLLM_URL
+              value: "https://granite-40-model-as-a-service.apps.rhsaia.vg6c.p1.openshiftapps.com"
+            - name: MODEL_NAME
+              value: "granite-40"
+            - name: PROMPT_TEXT
+              value: "What is the capital of France?"
+            - name: MAX_TOKENS
+              value: "100"
+            - name: TEMPERATURE
+              value: "0.7"
+            volumeMounts:
+            - name: script-volume
+              mountPath: /script
+          restartPolicy: OnFailure
+          volumes:
+          - name: script-volume
+            configMap:
+              name: chat-script
+              defaultMode: 0777  # Make the script executable
