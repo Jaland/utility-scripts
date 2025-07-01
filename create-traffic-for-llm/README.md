@@ -1,12 +1,12 @@
 # LLM Traffic Generator
 
-A utility for generating traffic to vLLM instances, designed to be deployed as a Kubernetes CronJob. This tool helps with testing and monitoring LLM services by sending periodic chat completion requests.
+A utility for generating traffic to vLLM instances, designed to be deployed as a Kubernetes CronJob or Helm chart. This tool helps with testing and monitoring LLM services by sending periodic chat completion requests.
 
 ## Features
 
 - Sends chat completion requests to vLLM instances using the OpenAI-compatible API
 - Configurable parameters (model, prompt, temperature, etc.)
-- Kubernetes-native deployment using Kustomize
+- Kubernetes-native deployment using Helm or Kustomize
 - Environment-specific configurations
 - Easy scheduling and one-off job execution
 
@@ -14,96 +14,188 @@ A utility for generating traffic to vLLM instances, designed to be deployed as a
 
 - Kubernetes cluster
 - `kubectl` configured to communicate with your cluster
-- `kustomize` (included with recent `kubectl` versions)
+- `helm` (version 3.x) for Helm deployment
+- `kustomize` (included with recent `kubectl` versions) for Kustomize deployment
 
-## Directory Structure
+## Deployment Options
 
-```text
-create-traffic-for-llm/
-├── k8s/                   # Kubernetes deployment files
-│   ├── base/              # Base kustomization
-│   │   ├── cronjob.yaml   # Base CronJob definition
-│   │   ├── kustomization.yaml
-│   │   └── scripts/       # Scripts directory
-│   │       └── chat-with-vllm.sh  # Main script for vLLM requests
-│   └── overlays/
-│       └── dev/           # Development environment overrides
-│           ├── kustomization.yaml
-│           └── patch-cronjob.yaml
-└── chat-with-vllm.sh      # Legacy script location (symlinked to k8s/scripts/)
-```
+## Option 1: Helm (Recommended)
 
-## Quick Start
-
-1. Navigate to the k8s directory:
+1. Add the chart repository (if applicable) or navigate to the chart directory:
 
    ```bash
-   cd create-traffic-for-llm/k8s
+   # If using a chart repository
+   helm repo add llm-traffic-generator /path/to/chart
+   
+   # Or navigate to the chart directory
+   cd create-traffic-for-llm/chart
    ```
 
-2. Review and customize the environment variables in `overlays/dev/patch-cronjob.yaml`:
-   - `VLLM_URL`: Your vLLM instance URL (required)
-   - `MODEL_NAME`: Model to use (default: "granite-40")
-   - `PROMPT_TEXT`: The prompt to send (default: "What is the capital of France?")
-   - `MAX_TOKENS`: Maximum tokens in response (default: 100)
-   - `TEMPERATURE`: Sampling temperature (default: 0.7)
-
-3. Apply the configuration:
+2. Install the chart:
 
    ```bash
-   kubectl apply -k overlays/dev
+   # Install with default values
+   helm install llm-traffic ./ -n your-namespace --create-namespace
+   
+   # Or customize values
+   helm install llm-traffic ./ -n your-namespace -f values.yaml
+   ```
+
+3. For custom configurations, create a `custom-values.yaml` file:
+
+   ```yaml
+   # List of prompts (one will be randomly selected for each job run)
+   prompts:
+     - "Your first custom prompt here"
+     - "Your second custom prompt here"
+     - "Another prompt for variety"
+   
+   # Number of requests to make per job run
+   numRequests: 10
+   
+   # Time between requests in seconds
+   sleepBetweenRequests: 5
+   
+   # vLLM configuration
+   vllm:
+     url: "http://your-vllm-service.your-namespace.svc.cluster.local"
+     model: "your-model-name"
+   
+   # CronJob schedule (every 15 minutes)
+   cronjob:
+     schedule: "*/15 * * * *"
+   ```
+
+   Then install with:
+
+   ```bash
+   helm install llm-traffic ./ -n your-namespace -f custom-values.yaml
    ```
 
 ## Customization
 
-### Changing the Schedule
+### Common Customizations
 
-Edit the `spec.schedule` field in `overlays/dev/patch-cronjob.yaml` using cron syntax. For example:
+#### Prompts Configuration
 
 ```yaml
-spec:
-  schedule: "*/15 * * * *"  # Run every 15 minutes
+# List of prompts (one will be randomly selected for each request)
+prompts:
+  - "Your first custom prompt here"
+  - "Your second custom prompt here"
+  - "Add as many prompts as you like"
+
+# Number of requests to make per job run
+numRequests: 10
+
+# Time between requests in seconds
+sleepBetweenRequests: 2
+
+# Maximum tokens per response
+maxTokens: 150
+
+# Sampling temperature (0.0 to 1.0)
+temperature: 0.8
+```
+
+#### vLLM Configuration
+
+```yaml
+vllm:
+  # URL of the vLLM service (required)
+  url: "http://your-vllm-service.your-namespace.svc.cluster.local"
+  # Model name to use
+  model: "your-model-name"
+```
+
+#### Scheduling Configuration
+
+```yaml
+cronjob:
+  # Cron schedule (every 30 minutes in this example)
+  schedule: "*/30 * * * *"
+  # Number of successful/failed jobs to keep in history
+  successfulJobsHistoryLimit: 5
+  failedJobsHistoryLimit: 5
+  # Job configuration
+  backoffLimit: 2
+  restartPolicy: OnFailure
+```
+
+#### Container Image
+
+```yaml
+resources:
+  limits:
+    cpu: 200m
+    memory: 256Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
 ```
 
 ### Running a One-time Job
 
-To run the job immediately without waiting for the schedule:
-
 ```bash
-kubectl create job --from=cronjob/chat-job chat-job-manual-$(date +%s)
+# Using Helm
+helm upgrade --install llm-traffic ./ -n your-namespace --set cronjob.schedule="" --set cronjob.job.enabled=true
+
+# Or manually create a job from the CronJob
+kubectl create job --from=cronjob/llm-traffic-llm-traffic-generator llm-traffic-manual-$(date +%s) -n your-namespace
 ```
 
 ## Monitoring
 
 ### Viewing Logs
 
-To view logs, first find the pod name:
-
 ```bash
 # Get the most recent job pod
-POD_NAME=$(kubectl get pods --sort-by=.metadata.creationTimestamp -l job-name -o name | grep -v "-manual" | tail -n1)
+POD_NAME=$(kubectl get pods --sort-by=.metadata.creationTimestamp -l app.kubernetes.io/name=llm-traffic-generator -o name -n your-namespace | tail -n1)
 
 # View logs
-kubectl logs $POD_NAME
+kubectl logs $POD_NAME -n your-namespace
 ```
 
-Or for a manual job:
+### Checking Job Status
 
 ```bash
-# Get the most recent manual job pod
-POD_NAME=$(kubectl get pods --sort-by=.metadata.creationTimestamp -l job-name -o name | grep "-manual" | tail -n1)
+# List all jobs
+kubectl get jobs -l app.kubernetes.io/name=llm-traffic-generator -n your-namespace
 
-# View logs
-kubectl logs $POD_NAME
+# Describe a specific job
+kubectl describe job <job-name> -n your-namespace
 ```
 
 ## Cleanup
 
-To remove all created resources:
+### Helm Installation
+```bash
+helm uninstall llm-traffic -n your-namespace
+```
 
+### Kustomize Installation
 ```bash
 kubectl delete -k overlays/dev
 ```
+
+## Directory Structure (Helm)
+
+```text
+create-traffic-for-llm/
+├── chart/                  # Helm chart
+│   ├── Chart.yaml          # Chart metadata
+│   ├── values.yaml         # Default configuration values
+│   └── templates/          # Template files
+│       ├── _helpers.tpl    # Template helpers
+│       ├── configmap.yaml  # Script ConfigMap
+│       └── cronjob.yaml    # CronJob definition
+└── k8s/                    # Legacy Kustomize files
+    └── ...
+```
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## Script Details
 

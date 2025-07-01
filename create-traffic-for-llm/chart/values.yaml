@@ -1,0 +1,50 @@
+# Default values for llm-traffic-generator.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# List of silly prompts to use for generating traffic
+prompts:
+  - "If a taco and a grilled cheese had a food baby, what would it be called and how would you make it?"
+  - "Write a haiku about a confused robot falling in love with a toaster"
+  - "If cats could talk, what would be their top three complaints about humans?"
+  - "Explain quantum physics using only emojis and then translate it back to English"
+  - "What would a world look like if squirrels were the dominant species instead of humans?"
+  - "Compose a dramatic breakup letter from a banana to a blender"
+  - "If you were a professional napper, what would be your training routine and diet?"
+  - "Describe the taste of the color purple to someone who can only see in black and white"
+  - "Write a job listing for a time traveler (must have own time machine)"
+
+# Number of requests to make per job run
+numRequests: 50
+
+# Sleep time between requests in seconds
+sleepBetweenRequests: 3
+
+# Maximum tokens in response
+maxTokens: 100
+
+# Sampling temperature (0.0 to 1.0)
+temperature: 0.7
+
+# Container image configuration
+image:
+  repository: registry.redhat.io/openshift4/ose-tools-rhel8
+  tag: latest
+
+# CronJob configuration
+cronjob:
+  # Schedule in cron format (default: run every hour at minute 1)
+  schedule: "* 1 * * *"
+  # Number of successful and failed jobs to keep
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  # Job configuration
+  backoffLimit: 2
+  restartPolicy: OnFailure
+
+# vLLM configuration
+vllm:
+  # URL of the vLLM service (required)
+  url: "http://granite-33-2b-instruct-predictor.model-as-a-service.svc.cluster.local"
+  # Model name to use
+  model: "granite-33-2b-instruct"

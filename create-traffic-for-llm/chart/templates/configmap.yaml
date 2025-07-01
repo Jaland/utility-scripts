@@ -1,0 +1,66 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: llm-traffic-script
+data:
+  chat-script.sh: |
+{{ .Files.Get "files/chat-script.sh" | indent 4 }}
+
+    # Other parameters with defaults
+    MAX_TOKENS="${MAX_TOKENS:-100}"
+    TEMPERATURE="${TEMPERATURE:-0.7}"
+
+    # Function to make a single request
+    make_request() {
+        local request_num=$1
+        echo "=== Request #${request_num} ==="
+        echo "Sending request to vLLM instance..."
+        echo "URL: ${VLLM_URL}/v1/chat/completions"
+        echo "Model: ${MODEL_NAME}"
+        echo "Prompt: \"${PROMPT_TEXT}\""
+        echo ""
+
+        # Construct the JSON payload
+        local json_payload
+        json_payload=$(cat <<EOF
+    {
+      "model": "${MODEL_NAME}",
+      "messages": [
+        {"role": "user", "content": "${PROMPT_TEXT}"}
+      ],
+      "max_tokens": ${MAX_TOKENS},
+      "temperature": ${TEMPERATURE},
+      "stream": false
+    }
+    EOF
+        )
+
+        # Make the request and format the output
+        local response
+        response=$(curl -sS \
+            -X POST \
+            -H "Content-Type: application/json" \
+            -d "${json_payload}" \
+            "${VLLM_URL}/v1/chat/completions" | jq -r '.choices[0].message.content' 2>/dev/null || echo "Error: Failed to get response")
+
+        echo "Response:"
+        echo "${response}"
+        echo ""
+    }
+
+    # Main execution
+    echo "Starting ${NUM_REQUESTS} request(s) to ${VLLM_URL}"
+    echo "Sleeping ${SLEEP_BETWEEN_REQUESTS} second(s) between requests"
+    echo "========================================"
+    
+    for ((i=1; i<=NUM_REQUESTS; i++)); do
+        make_request $i
+        
+        # Don't sleep after the last request
+        if [ $i -lt $NUM_REQUESTS ]; then
+            sleep $SLEEP_BETWEEN_REQUESTS
+        fi
+    done
+    
+    echo "========================================"
+    echo "Completed ${NUM_REQUESTS} request(s)"

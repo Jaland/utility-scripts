@@ -1,0 +1,13 @@
+apiVersion: v2
+name: llm-traffic-generator
+description: A Helm chart for deploying LLM traffic generator as a Kubernetes CronJob
+version: 0.1.0
+appVersion: "1.0.0"
+type: application
+keywords:
+  - llm
+  - vllm
+  - traffic
+  - testing
+maintainers:
+  - name: Jamie Land

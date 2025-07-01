@@ -1,0 +1,13 @@
+1. LLM Traffic Generator has been deployed as a CronJob.
+
+2. You can check the status of the CronJob by running:
+   kubectl get cronjob {{ include "llm-traffic-generator.fullname" . }} -n {{ .Release.Namespace }}
+
+3. To view the logs of the most recent job run:
+   kubectl logs -l job-name=$(kubectl get jobs -l "app.kubernetes.io/instance={{ .Release.Name }}" -o jsonpath="{.items[0].metadata.name}" -n {{ .Release.Namespace }}) -n {{ .Release.Namespace }}
+
+4. To manually trigger a job run:
+   kubectl create job --from=cronjob/{{ include "llm-traffic-generator.fullname" . }} {{ include "llm-traffic-generator.name" . }}-manual-$(date +%s) -n {{ .Release.Namespace }}
+
+5. To uninstall the release:
+   helm uninstall {{ .Release.Name }} -n {{ .Release.Namespace }}

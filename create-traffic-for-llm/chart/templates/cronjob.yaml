@@ -1,0 +1,41 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: llm-traffic-generator
+spec:
+  schedule: {{ .Values.cronjob.schedule | quote }}
+  successfulJobsHistoryLimit: {{ .Values.cronjob.successfulJobsHistoryLimit }}
+  failedJobsHistoryLimit: {{ .Values.cronjob.failedJobsHistoryLimit }}
+  jobTemplate:
+    spec:
+      backoffLimit: {{ .Values.cronjob.backoffLimit }}
+      template:
+        spec:
+          containers:
+          - name: llm-traffic
+            image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+            command: ["/bin/sh", "/script/chat-script.sh"]
+            env:
+            - name: VLLM_URL
+              value: {{ .Values.vllm.url | quote }}
+            - name: MODEL_NAME
+              value: {{ .Values.vllm.model | quote }}
+            - name: PROMPTS_JSON
+              value: {{ toJson .Values.prompts | quote }}
+            - name: NUM_REQUESTS
+              value: {{ .Values.numRequests | quote }}
+            - name: SLEEP_BETWEEN_REQUESTS
+              value: {{ .Values.sleepBetweenRequests | quote }}
+            - name: MAX_TOKENS
+              value: {{ .Values.maxTokens | quote }}
+            - name: TEMPERATURE
+              value: {{ .Values.temperature | quote }}
+            volumeMounts:
+            - name: script-volume
+              mountPath: /script
+          restartPolicy: {{ .Values.cronjob.restartPolicy }}
+          volumes:
+          - name: script-volume
+            configMap:
+              name: llm-traffic-script
+              defaultMode: 0777
