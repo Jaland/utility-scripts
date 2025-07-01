@@ -45,6 +45,6 @@ cronjob:
 # vLLM configuration
 vllm:
   # URL of the vLLM service (required)
-  url: "http://granite-33-2b-instruct-predictor.model-as-a-service.svc.cluster.local"
+  url: "http://llamastackdistribution-sample-service:8321/v1/openai"
   # Model name to use
   model: "granite-33-2b-instruct"
