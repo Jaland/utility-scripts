@@ -72,6 +72,60 @@ A utility for generating traffic to vLLM instances, designed to be deployed as a
    helm install llm-traffic ./ -n your-namespace -f custom-values.yaml
    ```
 
+## Running Ad Hoc Jobs
+
+You can run a one-time job without modifying the CronJob schedule using the following command:
+
+``` bash
+NAMESPACE="your-namespace"
+JOB_NAME="llm-traffic-manual-$(date +%s)"
+```
+
+```bash
+# Create a temporary job from the CronJob configuration
+kubectl create job --from=cronjob/llm-traffic-generator $JOB_NAME -n $NAMESPACE
+
+# Watch the job status
+kubectl get pods -n $NAMESPACE -w -l job-name=$JOB_NAME
+
+# View the job logs
+kubectl logs -n $NAMESPACE -l job-name=$JOB_NAME
+
+# Clean up the job when done
+kubectl delete job $JOB_NAME -n $NAMESPACE
+```
+
+### Running with Custom Parameters
+
+To run with custom parameters for a single job without modifying the Helm release:
+
+```bash
+# Create a temporary values file for the job
+cat > job-values.yaml <<EOF
+# Override any parameters for this specific run
+numRequests: 10
+sleepBetweenRequests: 1
+maxTokens: 100
+temperature: 0.7
+
+# Add custom prompts if needed
+prompts:
+  - "What's the weather like today?"
+  - "Tell me a joke about AI"
+  - "Explain quantum computing in simple terms"
+EOF
+
+# Template the Helm chart with custom values and apply it as a Job
+helm template llm-traffic ./ -f job-values.yaml -n your-namespace \
+  --set cronjob.schedule="" \
+  --set cronjob.suspend=true \
+  --show-only templates/cronjob.yaml | \
+  kubectl create -f - -n your-namespace
+
+# Clean up the temporary values file
+rm job-values.yaml
+```
+
 ## Customization
 
 ### Common Customizations

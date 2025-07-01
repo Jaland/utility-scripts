@@ -8,7 +8,34 @@ VLLM_URL="${VLLM_URL:?Error: VLLM_URL environment variable not set}"
 MODEL_NAME="${MODEL_NAME:-granite-40}"
 
 # Parse the prompts JSON array into a bash array
-IFS=$'\n' read -r -d '' -a PROMPTS < <(echo "$PROMPTS_JSON" | jq -r '.[]' && printf '\0')
+if [ -z "${PROMPTS_JSON:-}" ]; then
+    echo "Error: PROMPTS_JSON environment variable not set"
+    exit 1
+fi
+
+# Debug: Print the PROMPTS_JSON to see what we're working with
+echo "Debug: PROMPTS_JSON length: ${#PROMPTS_JSON}"
+
+# Use a temporary file to avoid issues with process substitution
+TEMP_FILE=$(mktemp)
+echo "$PROMPTS_JSON" > "$TEMP_FILE"
+
+# Initialize the array
+PROMPTS=()
+
+# Parse JSON array into bash array
+while IFS= read -r line; do
+    PROMPTS+=("$line")
+done < <(jq -r '.[]' "$TEMP_FILE")
+
+# Clean up the temp file
+rm -f "$TEMP_FILE"
+
+# Verify we have prompts
+if [ ${#PROMPTS[@]} -eq 0 ]; then
+    echo "Error: No prompts found in PROMPTS_JSON"
+    exit 1
+fi
 
 # Number of times to run the request (default: 1)
 NUM_REQUESTS="${NUM_REQUESTS:-1}"
