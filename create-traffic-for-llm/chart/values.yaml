@@ -33,7 +33,7 @@ image:
 
 # CronJob configuration
 cronjob:
-  # Schedule in cron format (default: run every hour at minute 1)
+  # Schedule in cron format (default: run every day at 1:00 AM)
   schedule: "* 1 * * *"
   # Number of successful and failed jobs to keep
   successfulJobsHistoryLimit: 3

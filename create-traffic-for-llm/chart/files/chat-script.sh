@@ -85,16 +85,27 @@ make_request() {
 EOF
     )
 
-    # Make the request and format the output
-    local response
-    response=$(curl -sS \
+    # Make the request and capture the full response
+    local full_response
+    full_response=$(curl -sS \
         -X POST \
         -H "Content-Type: application/json" \
         -d "${json_payload}" \
-        "${VLLM_URL}/v1/chat/completions" | jq -r '.choices[0].message.content' 2>/dev/null || echo "Error: Failed to get response")
+        "${VLLM_URL}/v1/chat/completions")
 
+    # Try to extract the content with jq, if it fails, use the full response
+    local response
+    response=$(echo "$full_response" | jq -r '.choices[0].message.content' 2>/dev/null)
+    
     echo "Response:"
-    echo "${response}"
+    if [ -z "$response" ] || [ "$response" = "null" ]; then
+        # If jq failed or returned null, show the full response
+        echo "Full response (jq parsing failed or returned null):"
+        echo "$full_response"
+    else
+        # Otherwise show the parsed content
+        echo "$response"
+    fi
     echo ""
 }
 
